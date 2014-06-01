@@ -165,8 +165,8 @@ if ($map) {
         my $pairedSamFile = $readGroup . ".paired.sam";
         my $pairedBamFile = $readGroup . ".paired.bam";
         my $mergedBamFile = $readGroup . "_merged.bam";
-        my $reads1 = $readGroup . "_trimmed_fqj.un1.fastq";
-        my $reads2 = $readGroup . "_trimmed_fqj.un2.fastq";
+        my $reads1 = $fqjDir . "/" . $readGroup . "_trimmed_fqj.un1.fastq";
+        my $reads2 = $fqjDir . "/" . $readGroup . "_trimmed_fqj.un2.fastq";
         my $readsSingles = $fqjDir . "/" . $readGroup . "_R1andR2trimmomaticSingles.fastq";
         system("bwa mem -t 12 $reference $readsSingles > $singlesSamFile");
         system("bwa mem -t 12 $reference $reads1 $reads2 > $pairedSamFile");
