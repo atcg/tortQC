@@ -160,11 +160,11 @@ if ($map) {
         mkdir $mappingDir;
     }
     foreach my $readGroup (sort keys %sampleNamesHash) {
-        my $singlesSamFile = $readGroup . ".singlesAndJoined.sam";
-        my $singlesBamFile = $readGroup . ".singlesAndJoined.bam";
-        my $pairedSamFile = $readGroup . ".paired.sam";
-        my $pairedBamFile = $readGroup . ".paired.bam";
-        my $mergedBamFile = $readGroup . "_merged.bam";
+        my $singlesSamFile = $mappingDir . "/" . $readGroup . ".singlesAndJoined.sam";
+        my $singlesBamFile = $mappingDir . "/" . $readGroup . ".singlesAndJoined.bam";
+        my $pairedSamFile = $mappingDir . "/" . $readGroup . ".paired.sam";
+        my $pairedBamFile = $mappingDir . "/" . $readGroup . ".paired.bam";
+        my $mergedBamFile = $mappingDir . "/" . $readGroup . "_merged.bam";
         my $reads1 = $fqjDir . "/" . $readGroup . "_trimmed_fqj.un1.fastq";
         my $reads2 = $fqjDir . "/" . $readGroup . "_trimmed_fqj.un2.fastq";
         my $readsSingles = $fqjDir . "/" . $readGroup . "_R1andR2trimmomaticSingles.fastq";
@@ -177,11 +177,11 @@ if ($map) {
         system("samtools merge $mergedBamFile $singlesBamFile $pairedBamFile");
         
         # Mark duplicates and use mpileup
-        my $cleanedBam = $readGroup . ".merged.cleaned.bam";
-        my $sortedBam = $readGroup . ".merged.cleaned.sorted.bam";
-        my $markDupsBam = $readGroup . ".merged.cleaned.sorted.markDups.bam";
-        my $markDupsMetrics = $readGroup . ".merged.sorted.cleaned.markDups.metrics";
-        my $pileupFile = $readGroup . ".mpileup";
+        my $cleanedBam = $mappingDir . "/" . $readGroup . ".merged.cleaned.bam";
+        my $sortedBam = $mappingDir . "/" . $readGroup . ".merged.cleaned.sorted.bam";
+        my $markDupsBam = $mappingDir . "/" . $readGroup . ".merged.cleaned.sorted.markDups.bam";
+        my $markDupsMetrics = $mappingDir . "/" . $readGroup . ".merged.sorted.cleaned.markDups.metrics";
+        my $pileupFile = $mappingDir . "/" . $readGroup . ".mpileup";
         system("java -jar ~/bin/picard/picard-tools/CleanSam.jar I=$mergedBamFile O=$cleanedBam");    
         system("java -jar ~/bin/picard/picard-tools/AddOrReplaceReadGroups.jar I=$cleanedBam O=$sortedBam SORT_ORDER=coordinate RGPL=illumina RGPU=Test RGLB=Lib1 RGID=$readGroup RGSM=$readGroup VALIDATION_STRINGENCY=LENIENT");
         system("java -jar ~/bin/picard/picard-tools/MarkDuplicates.jar I=$sortedBam O=$markDupsBam METRICS_FILE=$markDupsMetrics MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=250 ASSUME_SORTED=true REMOVE_DUPLICATES=false");
