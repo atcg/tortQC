@@ -107,13 +107,16 @@ print $logFH "Finished running all trimmomatic commands\n";
 print $logFH "--------------------------------------------------\n\n";
 }
 
-
+my $fqjDir = $outDir . "/fastq-join";
+unless (-d $fqjDir) {
+    mkdir $fqjDir;
+}
 
 # print $logFH "Running fastq-join to merge overlapping paired end reads\n";
 foreach my $readGroup (sort keys %sampleNamesHash) {
     sleep 10;
     print $logFH "\n\nStarting to process $readGroup through the fastq-join and assembly stages\n\n";
-    my $combinedTrimmomaticSingles = $readGroup . "_R1andR2trimmomaticSingles.fastq.gz";
+    my $combinedTrimmomaticSingles = $fqjDir . "/" . $readGroup . "_R1andR2trimmomaticSingles.fastq.gz";
     my $R1pairedTrimmedUnzipped;
     my $R2pairedTrimmedUnzipped;
     if ($sampleNamesHash{$readGroup}{'R1_paired_trimmed'} =~ /(.*).gz$/) {
@@ -124,10 +127,13 @@ foreach my $readGroup (sort keys %sampleNamesHash) {
         $R2pairedTrimmedUnzipped = $1;
         system("gunzip $sampleNamesHash{$readGroup}{'R2_paired_trimmed'}");
     }
-    my $fqjOutputPrefix = $readGroup . "_trimmed_fqj.%.fastq";
+    my $fqjOutputPrefix = $fqjDir . "/" . $readGroup . "_trimmed_fqj.%.fastq";
     system("fastq-join -v ' ' $R1pairedTrimmedUnzipped $R2pairedTrimmedUnzipped -o $fqjOutputPrefix");
     system("cat $sampleNamesHash{$readGroup}{'R1_singles_trimmed'} $sampleNamesHash{$readGroup}{'R2_singles_trimmed'} > $combinedTrimmomaticSingles");
     system("gunzip $combinedTrimmomaticSingles");
+    my $joinedReads = $fqjDir . "/" . $readGroup . "_trimmed_fqj.join.fastq";
+    my $joinedAndSingles = $fqjDir . "/" . $readGroup . "_combinedJoinedAndSingles.fastq";
+    system("cat $joinedReads $combinedTrimmomaticSingles > $joinedAndSingles");
 }
 
 print $logFH "--------------------------------------------------\n";
