@@ -109,10 +109,30 @@ print $logFH "--------------------------------------------------\n\n";
 
 
 
+# print $logFH "Running fastq-join to merge overlapping paired end reads\n";
+foreach my $readGroup (sort keys %sampleNamesHash) {
+    sleep 10;
+    print $logFH "\n\nStarting to process $readGroup through the fastq-join and assembly stages\n\n";
+    my $combinedTrimmomaticSingles = $readGroup . "_R1andR2trimmomaticSingles.fastq.gz";
+    my $R1pairedTrimmedUnzipped;
+    my $R2pairedTrimmedUnzipped;
+    if ($sampleNamesHash{$readGroup}{'R1_paired_trimmed'} =~ /(.*).gz$/) {
+        $R1pairedTrimmedUnzipped = $1;
+        system("gunzip $sampleNamesHash{$readGroup}{'R1_paired_trimmed'}");
+    }
+    if ($sampleNamesHash{$readGroup}{'R2_paired_trimmed'} =~ /(.*).gz$/) {
+        $R2pairedTrimmedUnzipped = $1;
+        system("gunzip $sampleNamesHash{$readGroup}{'R2_paired_trimmed'}");
+    }
+    my $fqjOutputPrefix = $readGroup . "_trimmed_fqj.%.fastq";
+    system("fastq-join -v ' ' $R1pairedTrimmedUnzipped $R2pairedTrimmedUnzipped -o $fqjOutputPrefix");
+    system("cat $sampleNamesHash{$readGroup}{'R1_singles_trimmed'} $sampleNamesHash{$readGroup}{'R2_singles_trimmed'} > $combinedTrimmomaticSingles");
+    system("gunzip $combinedTrimmomaticSingles");
+}
 
-
-
-
+print $logFH "--------------------------------------------------\n";
+print $logFH "Finished running fastq-join on all samples\n";
+print $logFH "--------------------------------------------------\n\n"; 
 
 
 
@@ -141,8 +161,7 @@ perl tortReadQC.pl --reads <file> --adapters <file>
 
 =head1 DESCRIPTION
 
-Short description of the program.
-
-Can be multiple paragraphs.
+This was written for the purposes of QCing HiSeq reads for a desert tortoise
+project
 
 =cut
