@@ -59,7 +59,7 @@ unless (-d $trimmomaticDir) {
 }
 
 # Now do sequence QC using Trimmomatic
-{
+
 my @trimmomaticCommands;
 print $logFH "Generating trimmomatic commands on all read files.\n";
 foreach my $file (@readsFiles) {
