@@ -155,7 +155,7 @@ if ($trim) {
 }
 
 if ($map) {
-    my $mappingDir = $startingDir . "/mapping";
+    my $mappingDir = $outDir . "/mapping";
     unless (-d $mappingDir) {
         mkdir $mappingDir;
     }
