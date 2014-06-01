@@ -16,6 +16,7 @@ my $logFile;
 my $threadsMax = 4;
 my $trim;
 my $map;
+my $reference = "/mnt/Data4/genomes/Galapagos.fasta"; # Default to galapagos tortoise
 
 GetOptions  ("reads=s"         => \$readsDir,
              "adapters=s"      => \$adaptersDir,
@@ -24,6 +25,7 @@ GetOptions  ("reads=s"         => \$readsDir,
              "threads=i"       => \$threadsMax,
              "trim"            => \$trim,
              "map"             => \$map,
+             "reference=s"     => \$reference,
              "help|man" => \$help) || pod2usage(2);
 
 if (!$readsDir or !$adaptersDir or !$outDir or $help) {
@@ -37,6 +39,10 @@ unless (-d $outDir) {
 }
 open(my $logFH, ">", $logFile) or die "Couldn't open log file $logFile for writing: $!\n";
 
+my $fqjDir = $outDir . "/fastq-join";
+unless (-d $fqjDir) {
+    mkdir $fqjDir;
+}
 
 # First gather up all the file names of the files in the specified reads directory
 my %readFilesHash;
@@ -113,10 +119,7 @@ if ($trim) {
     print $logFH "--------------------------------------------------\n\n";
     }
     
-    my $fqjDir = $outDir . "/fastq-join";
-    unless (-d $fqjDir) {
-        mkdir $fqjDir;
-    }
+
     
     # print $logFH "Running fastq-join to merge overlapping paired end reads\n";
     foreach my $readGroup (sort keys %sampleNamesHash) {
@@ -139,7 +142,7 @@ if ($trim) {
         system("gunzip $combinedTrimmomaticSingles");
         my $joinedReads = $fqjDir . "/" . $readGroup . "_trimmed_fqj.join.fastq";
         my $joinedAndSingles = $fqjDir . "/" . $readGroup . "_combinedJoinedAndSingles.fastq";
-        # Need to update this file name since we unzipped the file above
+        # Need to update this file name since we unzipped the file above 
         if ($combinedTrimmomaticSingles =~ /(.*).gz$/) {
             $combinedTrimmomaticSingles = $1;
         }
@@ -153,10 +156,43 @@ if ($trim) {
 }
 
 if ($map) {
+    my $mappingDir = $startingDir . "/mapping";
+    unless (-d $mappingDir) {
+        mkdir $mappingDir;
+    }
     foreach my $readGroup (sort keys %sampleNamesHash) {
+        my $singlesSamFile = $readGroup . ".singlesAndJoined.sam";
+        my $singlesBamFile = $readGroup . ".singlesAndJoined.bam";
+        my $pairedSamFile = $readGroup . ".paired.sam";
+        my $pairedBamFile = $readGroup . ".paired.bam";
+        my $mergedBamFile = $readGroup . "_merged.bam";
+        my $reads1 = $readGroup . "_trimmed_fqj.un1.fastq";
+        my $reads2 = $readGroup . "_trimmed_fqj.un2.fastq";
+        my $readsSingles = $fqjDir . "/" . $readGroup . "_R1andR2trimmomaticSingles.fastq";
+        system("bwa mem -t 12 $reference $readsSingles > $singlesSamFile");
+        system("bwa mem -t 12 $reference $reads1 $reads2 > $pairedSamFile");
         
+        system("samtools view -b -S $singlesSamFile > $singlesBamFile");
+        system("samtools view -b -S $pairedSamFile > $pairedBamFile");
         
+        system("samtools merge $mergedBamFile $singlesBamFile $pairedBamFile");
         
+        # Mark duplicates and use mpileup
+        my $cleanedBam = $readGroup . ".merged.cleaned.bam";
+        my $sortedBam = $readGroup . ".merged.cleaned.sorted.bam";
+        my $markDupsBam = $readGroup . ".merged.cleaned.sorted.markDups.bam";
+        my $markDupsMetrics = $readGroup . ".merged.sorted.cleaned.markDups.metrics";
+        my $pileupFile = $readGroup . ".mpileup";
+        system("java -jar ~/bin/picard/picard-tools/CleanSam.jar I=$mergedBamFile O=$cleanedBam");    
+        system("java -jar ~/bin/picard/picard-tools/AddOrReplaceReadGroups.jar I=$cleanedBam O=$sortedBam SORT_ORDER=coordinate RGPL=illumina RGPU=Test RGLB=Lib1 RGID=$readGroup RGSM=$readGroup VALIDATION_STRINGENCY=LENIENT");
+        system("java -jar ~/bin/picard/picard-tools/MarkDuplicates.jar I=$sortedBam O=$markDupsBam METRICS_FILE=$markDupsMetrics MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=250 ASSUME_SORTED=true REMOVE_DUPLICATES=false");
+        system("samtools mpileup $markDupsBam > $pileupFile");
+    
+        print "Stats for $readGroup:\n";
+        system("samtools flagstat $markDupsBam");
+        print "\n\n\n";
+        # All we need to keep is the $markDupsBam file, so get rid of the other sams and bams
+        unlink ($singlesSamFile, $pairedSamFile, $singlesBamFile, $pairedBamFile, $mergedBamFile, $cleanedBam, $sortedBam,);
         
     }
 }
@@ -189,7 +225,10 @@ perl tortReadQC.pl --reads <file> --adapters <file>
    -out             Name of output directory (it will be created)
    -log             Name of logfile to print output (you will probably also want
                     to capture STDERR manually)
+   -trim            Perform read trimming using Trimmomatic and join with fastq-join
+   -map             Perform mapping to reference genome
    -threads         Threads to use for multithreading (default=4)
+   -reference       Reference to use for mapping (default to /mnt/Data4/genomes/Galapagos.fasta)
    -help|man        Prints out documentation
 
 
@@ -199,3 +238,13 @@ This was written for the purposes of QCing HiSeq reads for a desert tortoise
 project
 
 =cut
+
+
+
+
+
+
+
+
+
+
